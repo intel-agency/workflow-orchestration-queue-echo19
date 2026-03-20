@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<testsuites xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="junit_schema_4.xsd" name="Pester" tests="18" errors="0" failures="0" disabled="0" time="71.254">
+  <testsuite name="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" tests="11" errors="0" failures="0" hostname="GBOOK2PRO" id="0" skipped="0" disabled="0" package="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" time="43.095">
+    <properties>
+      <property name="user" value="nam20485" />
+      <property name="clr-version" value="10.0.5" />
+      <property name="junit-version" value="4" />
+      <property name="user-domain" value="" />
+      <property name="cwd" value="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template" />
+      <property name="machine-name" value="GBOOK2PRO" />
+      <property name="platform" value="Linux" />
+      <property name="os-version" value="6.6.114.1-microsoft-standard-WSL2" />
+      <property name="framework-version" value="5.5.0" />
+    </properties>
+    <testcase name="create-dispatch-issue.ps1.Parameter validation.Throws when Repo is not in owner/repo format" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="0.249" />
+    <testcase name="create-dispatch-issue.ps1.Parameter validation.Throws when Body is empty" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="0.022" />
+    <testcase name="create-dispatch-issue.ps1.Dry-run mode.Exits 0 with minimal required params" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="4.928" />
+    <testcase name="create-dispatch-issue.ps1.Dry-run mode.Exits 0 with a custom Title" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="5.321" />
+    <testcase name="create-dispatch-issue.ps1.Dry-run mode.Exits 0 with Labels" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="4.916" />
+    <testcase name="create-dispatch-issue.ps1.Dry-run mode.Includes Project in output when provided" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="5.679" />
+    <testcase name="create-dispatch-issue.ps1.Dry-run mode.Includes Milestone in output when provided" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="5.018" />
+    <testcase name="create-dispatch-issue.ps1.Dry-run mode.Includes Template in output when provided" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="4.857" />
+    <testcase name="create-dispatch-issue.ps1.Dry-run mode.Includes Assignee in output when provided" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="4.990" />
+    <testcase name="create-dispatch-issue.ps1.Dry-run mode.Exits 0 with all optional params combined" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="4.806" />
+    <testcase name="create-dispatch-issue.ps1.Missing gh binary.Exits non-zero when gh is not in PATH" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestCreateDispatchIssue.ps1" assertions="0" time="1.213" />
+  </testsuite>
+  <testsuite name="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestTriggerProjectSetup.ps1" tests="7" errors="0" failures="0" hostname="GBOOK2PRO" id="1" skipped="0" disabled="0" package="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestTriggerProjectSetup.ps1" time="28.159">
+    <properties>
+      <property name="user" value="nam20485" />
+      <property name="clr-version" value="10.0.5" />
+      <property name="junit-version" value="4" />
+      <property name="user-domain" value="" />
+      <property name="cwd" value="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template" />
+      <property name="machine-name" value="GBOOK2PRO" />
+      <property name="platform" value="Linux" />
+      <property name="os-version" value="6.6.114.1-microsoft-standard-WSL2" />
+      <property name="framework-version" value="5.5.0" />
+    </properties>
+    <testcase name="trigger-project-setup.ps1.Parameter validation.Throws when Repo is not in owner/repo format" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestTriggerProjectSetup.ps1" assertions="0" time="0.023" />
+    <testcase name="trigger-project-setup.ps1.Dry-run mode.Exits 0 with the required Repo param" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestTriggerProjectSetup.ps1" assertions="0" time="4.624" />
+    <testcase name="trigger-project-setup.ps1.Dry-run mode.Output includes project-setup workflow name" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestTriggerProjectSetup.ps1" assertions="0" time="4.865" />
+    <testcase name="trigger-project-setup.ps1.Dry-run mode.Passes Project through to output" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestTriggerProjectSetup.ps1" assertions="0" time="4.559" />
+    <testcase name="trigger-project-setup.ps1.Dry-run mode.Passes Milestone through to output" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestTriggerProjectSetup.ps1" assertions="0" time="4.537" />
+    <testcase name="trigger-project-setup.ps1.Dry-run mode.Passes Assignee through to output" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestTriggerProjectSetup.ps1" assertions="0" time="4.919" />
+    <testcase name="trigger-project-setup.ps1.Dry-run mode.Exits 0 with all optional params combined" status="Passed" classname="/home/nam20485/src/github/intel-agency/ai-new-workflow-app-template/test/TestTriggerProjectSetup.ps1" assertions="0" time="4.561" />
+  </testsuite>
+</testsuites>
