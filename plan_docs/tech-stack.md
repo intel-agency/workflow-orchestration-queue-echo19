@@ -43,9 +43,9 @@ This document defines the complete technology stack for the workflow-orchestrati
 
 ## Data Validation & Models
 
-### Pydantic
+### Pydantic v2
 - **Purpose**: Strict data validation, settings management, schema definitions
-- **Rationale**: Type-safe data models with runtime validation
+- **Rationale**: Type-safe data models with runtime validation; v2 brings Rust-based performance
 - **Usage**:
   - WorkItem models
   - TaskType enums
@@ -130,6 +130,27 @@ This document defines the complete technology stack for the workflow-orchestrati
 
 ## State Management
 
+### GitHub REST API
+- **Purpose**: Primary API for issue/label/PR operations
+- **Usage**: Task claiming, status updates, comment posting
+- **Authentication**: GitHub App Installation tokens (5,000 req/hr)
+
+### GitHub GraphQL API
+- **Purpose**: Efficient queries for complex data fetching (e.g., issue relationships, project board items)
+- **Usage**: Batch queries, nested data retrieval
+
+### GitHub Apps
+- **Purpose**: Authentication and authorization model
+- **Features**:
+  - Installation tokens with fine-grained permissions
+  - Webhook event subscriptions (issues, issue_comment, pull_request)
+  - HMAC secret for payload verification
+
+### GitHub Webhooks
+- **Purpose**: Event-driven triggers for real-time task ingestion
+- **Events Subscribed**: `issues`, `issue_comment`, `pull_request`, `pull_request_review`
+- **Security**: HMAC SHA256 signature validation on all incoming payloads
+
 ### GitHub Issues & Labels
 - **Purpose**: Primary database ("Markdown as a Database")
 - **Rationale**:
@@ -174,6 +195,59 @@ This document defines the complete technology stack for the workflow-orchestrati
 
 ---
 
+## Testing
+
+### pytest
+- **Purpose**: Primary testing framework for all Python components
+- **Rationale**: Industry-standard Python testing with powerful fixture system
+- **Usage**: Unit tests, integration tests, parametrized test cases
+
+### pytest-asyncio
+- **Purpose**: Async test support for pytest
+- **Rationale**: Essential for testing the async Sentinel polling loop and FastAPI endpoints
+- **Usage**: `@pytest.mark.asyncio` decorators for async test functions
+
+### httpx (Test Client)
+- **Purpose**: Async HTTP test client for FastAPI application testing
+- **Rationale**: Direct ASGI test client support — test webhook endpoints without running a server
+- **Usage**: `httpx.AsyncClient(app=app, base_url="http://test")` for endpoint testing
+
+### Test Strategy
+| Test Type | Tool | Scope |
+|-----------|------|-------|
+| Unit Tests | pytest + pytest-asyncio | Models, interfaces, business logic |
+| API Tests | httpx test client | FastAPI webhook endpoints |
+| Integration Tests | pytest + httpx (live) | GitHub API interactions |
+| E2E Tests | pytest + subprocess | Full workflow execution |
+| Performance | pytest-benchmark | Polling engine throughput |
+
+**Coverage Target**: 80%+
+
+---
+
+## Linting & Code Quality
+
+### ruff
+- **Purpose**: Fast Python linter and formatter (Rust-based)
+- **Rationale**: Replaces flake8, isort, and black with a single tool
+- **Configuration**: `pyproject.toml` `[tool.ruff]` section
+- **Usage**: 
+  - Linting: `ruff check src/`
+  - Formatting: `ruff format src/`
+  - CI enforcement: `ruff check --no-fix`
+
+### Type Checking
+- **Tool**: mypy (optional, recommended)
+- **Purpose**: Static type checking for Pydantic models and async code
+
+### Code Quality Standards
+- **Docstrings**: Sphinx/Google format for all public APIs
+- **Line Length**: 120 characters (configurable via ruff)
+- **Import Sorting**: Handled by ruff (replaces isort)
+- **Complexity**: Max cyclomatic complexity of 10 per function
+
+---
+
 ## Development Tools
 
 ### GitHub CLI (gh)
@@ -196,7 +270,7 @@ This document defines the complete technology stack for the workflow-orchestrati
 | Shell | pwsh/Bash | - | Bridge scripts |
 | Web Framework | FastAPI | Latest | Webhook receiver |
 | ASGI Server | Uvicorn | Latest | Production server |
-| Validation | Pydantic | Latest | Data models |
+| Validation | Pydantic v2 | Latest | Data models |
 | HTTP Client | HTTPX | Latest | Async API calls |
 | Package Manager | uv | 0.10.9+ | Dependency management |
 | Containerization | Docker | Latest | Worker isolation |
@@ -205,6 +279,11 @@ This document defines the complete technology stack for the workflow-orchestrati
 | LLM Backend | ZhipuAI GLM | GLM-5 | Language model |
 | State Store | GitHub Issues | - | Task queue/database |
 | Security | HMAC SHA256 | - | Webhook validation |
+| Testing | pytest | Latest | Test framework |
+| Async Testing | pytest-asyncio | Latest | Async test support |
+| API Testing | httpx (test client) | Latest | FastAPI endpoint tests |
+| Linting | ruff | Latest | Linter & formatter |
+| Type Checking | mypy | Latest | Static type analysis |
 
 ---
 
