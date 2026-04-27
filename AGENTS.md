@@ -4,267 +4,314 @@ description: Project instructions for coding agents
 scope: repository
 ---
 
-<instructions>
-  <purpose>
-    <summary>
-      GitHub Actions-based AI orchestration system. On GitHub events (issues, PR comments, reviews),
-      the `orchestrator-agent` workflow assembles a structured prompt, spins up a devcontainer,
-      and runs `opencode --agent Orchestrator` to delegate work to specialist sub-agents in `.opencode/agents/`.
-    </summary>
-  </purpose>
+# AGENTS.md
 
-  <template_usage>
-    <summary>
-      This repository is a **GitHub template repo** (`intel-agency/workflow-orchestration-queue-echo19`).
-      New project repositories are created from it using automation scripts in the
-      `nam20485/workflow-launch2` repo. The scripts clone this template, seed plan docs,
-      replace template placeholders, and push — producing a ready-to-go AI-orchestrated repo.
-    </summary>
+## Project Overview
 
-    <template-clone-instances>
-      Once the template has been cloned into a new instance, this file must be updated to match the new repo's specifics (e.g., name, links, instructions). 
-    </template-clone-instances>
+**OS-APOW** (Opencode-Server Agent Workflow Orchestration) is a headless agentic orchestration
+platform that transforms GitHub Issues into automated Execution Orders fulfilled by specialized
+AI agents. It shifts AI from a passive co-pilot to an autonomous background production service.
 
-    <creation_workflow>
-      <step>1. Run `./scripts/create-repo-from-slug.ps1 -Slug &lt;project-slug&gt; -Yes` from the `workflow-launch2` repo.</step>
-      <step>2. That delegates to `./scripts/create-repo-with-plan-docs.ps1` which:
-        - Creates a new GitHub repo from this template via `gh repo create --template intel-agency/workflow-orchestration-queue-echo19`
-        - Generates a random suffix for the repo name (e.g., `project-slug-bravo84`)
-        - Creates repo secrets (`GEMINI_API_KEY`) and variables (`VERSION_PREFIX`)
-        - Clones the new repo locally
-        - Copies plan docs from `./plan_docs/&lt;slug&gt;/` into the clone's `plan_docs/` directory
-        - Replaces all template placeholders (`workflow-orchestration-queue-echo19` → new repo name, `intel-agency` → new owner)
-        - Commits and pushes the seeded repo
-      </step>
-      <step>3. On push, the clone's `validate` workflow runs CI (lint, scan, tests, devcontainer build) and the `publish-docker` workflow builds and pushes the base Docker image to GHCR.</step>
-      <step>4. On successful `publish-docker` completion, the `prebuild-devcontainer` workflow is triggered (via `workflow_run`) to build and push the prebuilt devcontainer image. Together, `publish-docker` → `prebuild-devcontainer` form the devcontainer prebuild caching pipeline that the `orchestrator-agent` workflow relies on to quickly spin up devcontainers.</step>
-    </creation_workflow>
+**Tech Stack:** Python 3.12+ | FastAPI | Pydantic v2 | HTTPX | uvicorn | uv (package manager)
 
-    <template_design_constraints>
-      <rule>Template placeholders (`workflow-orchestration-queue-echo19`, `intel-agency`) in file contents and paths are replaced by the creation script. Keep them consistent.</rule>
-      <rule>The `validate` workflow must tolerate fresh clones where no prebuilt GHCR devcontainer image exists yet (fallback build from Dockerfile + image aliasing).</rule>
-      <rule>The `plan_docs/` directory contains external-generated documents seeded at clone time. Exclude it from strict linting (markdown lint, etc.).</rule>
-      <rule>The consumer `.devcontainer/devcontainer.json` references a prebuilt GHCR image. On fresh clones the image won't exist until `publish-docker` and `prebuild-devcontainer` workflows complete their first run.</rule>
-    </template_design_constraints>
+## Setup Commands
 
-    <automation_scripts>
-      <entry><repo>nam20485/workflow-launch2</repo><path>scripts/create-repo-from-slug.ps1</path><description>Entry point — takes a slug, resolves plan docs dir, delegates to create-repo-with-plan-docs.ps1</description></entry>
-      <entry><repo>nam20485/workflow-launch2</repo><path>scripts/create-repo-with-plan-docs.ps1</path><description>Full pipeline: repo create, clone, seed docs, placeholder replace, commit, push</description></entry>
-    </automation_scripts>
-  </template_usage>
+```bash
+# Install dependencies (including dev tools)
+uv sync --extra dev
 
-  <tech_stack>
-    <item>opencode CLI — agent runtime (`opencode --model zai-coding-plan/glm-5 --agent Orchestrator`)</item>
-    <item>ZhipuAI GLM models via `ZHIPU_API_KEY`</item>
-    <item>GitHub Actions + devcontainers/ci — workflow trigger, runner, reproducible container</item>
-    <item>.NET SDK 10 + Aspire + Avalonia templates, Bun, uv (all in devcontainer)</item>
-    <item>MCP servers: `@modelcontextprotocol/server-sequential-thinking`, `@modelcontextprotocol/server-memory`</item>
-  </tech_stack>
+# Build Docker image
+docker build -t os-apow .
 
-  <repository_map>
-    <!-- Workflows -->
-    <entry><path>.github/workflows/orchestrator-agent.yml</path><description>Primary workflow — assembles prompt, logs into GHCR, runs opencode in devcontainer</description></entry>
-    <entry><path>.github/workflows/prompts/orchestrator-agent-prompt.md</path><description>Prompt template with `__EVENT_DATA__` placeholder (sed-substituted at runtime)</description></entry>
-    <entry><path>.github/workflows/publish-docker.yml</path><description>Builds Dockerfile, pushes to GHCR with branch-latest and branch-&lt;VERSION_PREFIX.run_number&gt; tags</description></entry>
-    <entry><path>.github/workflows/prebuild-devcontainer.yml</path><description>Layers devcontainer Features on published Docker image (triggered by workflow_run)</description></entry>
-    <!-- Agent definitions -->
-    <entry><path>.opencode/agents/orchestrator.md</path><description>Orchestrator — coordinates specialists, never writes code directly</description></entry>
-    <entry><path>.opencode/agents/</path><description>All specialist agents (developer, code-reviewer, planner, devops-engineer, github-expert, etc.)</description></entry>
-    <entry><path>.opencode/commands/</path><description>Reusable command prompts (orchestrate-new-project, grind-pr-reviews, fix-failing-workflows, etc.)</description></entry>
-    <entry><path>.opencode/opencode.json</path><description>opencode config — MCP server definitions</description></entry>
-    <!-- Devcontainer -->
-    <entry><path>.github/.devcontainer/Dockerfile</path><description>Devcontainer image — .NET SDK, Bun, uv, opencode CLI (build context for publish-docker)</description></entry>
-    <entry><path>.github/.devcontainer/devcontainer.json</path><description>Build-time devcontainer config (Dockerfile + Features: node, python, gh CLI)</description></entry>
-    <entry><path>.devcontainer/devcontainer.json</path><description>Consumer devcontainer — pulls prebuilt GHCR image, forwards port 4096, and auto-starts `opencode serve` on container start</description></entry>
-    <entry><path>scripts/start-opencode-server.sh</path><description>Guarded `opencode serve` bootstrapper used by the devcontainer lifecycle and workflow attach path</description></entry>
-    <entry><path>scripts/run-devcontainer-orchestrator.sh</path><description>One-shot script: brings up the devcontainer, ensures the opencode server is running, and executes the orchestrator agent. Used by the workflow and can be invoked directly locally.</description></entry>
-    <!-- Tests -->
-    <entry><path>test/</path><description>Shell-based tests: devcontainer build, tool availability, prompt assembly</description></entry>
+# Run notifier service (The Ear — webhook receiver)
+uv run uvicorn src.notifier_service:app --reload --port 8000
 
-    <opencode_server>
-      <summary>
-        The consumer devcontainer auto-starts `opencode serve` through `scripts/start-opencode-server.sh`.
-        The server listens on port `4096` by default so host or in-container clients can attach with
-        `opencode run --attach http://127.0.0.1:4096 ...` (or the forwarded host port when connecting from outside the container).
-      </summary>
-    </opencode_server>
-    <entry><path>test/fixtures/</path><description>Sample webhook payloads for local testing</description></entry>
-    <!-- Remote instructions -->
-    <entry><path>local_ai_instruction_modules/</path><description>Local instruction modules (development rules, workflows, delegation, terminal commands)</description></entry>
-  </repository_map>
+# Run sentinel service (The Brain — background orchestrator)
+uv run python -m src.orchestrator_sentinel
 
-  <instruction_source>
-    <repository>
-      <name>nam20485/agent-instructions</name>
-      <branch>main</branch>
-    </repository>
-    <guidance>
-      Remote instructions are the single source of truth. Fetch from raw URLs:
-      replace `github.com/` with `raw.githubusercontent.com/` and remove `blob/`.
-      Core instructions: `https://raw.githubusercontent.com/nam20485/agent-instructions/main/ai_instruction_modules/ai-core-instructions.md`
-    </guidance>
-    <modules>
-      <module type="core" required="true" link="https://github.com/nam20485/agent-instructions/blob/main/ai_instruction_modules/ai-core-instructions.md">Core Instructions</module>
-      <module type="local" required="true" path="local_ai_instruction_modules">Local AI Instructions</module>
-      <module type="local" required="true" path="local_ai_instruction_modules/ai-dynamic-workflows.md">Dynamic Workflow Orchestration</module>
-      <module type="local" required="true" path="local_ai_instruction_modules/ai-workflow-assignments.md">Workflow Assignments</module>
-      <module type="local" required="true" path="local_ai_instruction_modules/ai-development-instructions.md">Development Instructions</module>
-      <module type="optional" path="local_ai_instruction_modules/ai-terminal-commands.md">Terminal Commands</module>
-    </modules>
-  </instruction_source>
+# Start services via Docker Compose
+docker compose up notifier
+docker compose --profile sentinel up
+```
 
-  <environment_setup>
-    <secrets>
-      <item>`ZHIPU_API_KEY` — ZhipuAI model access; set in repo Settings → Secrets.</item>
-      <item>`KIMI_CODE_ORCHESTRATOR_AGENT_API_KEY` — Kimi (Moonshot) model access; set in repo Settings → Secrets.</item>
-      <item>`GITHUB_TOKEN` — provided automatically by Actions.</item>
-    </secrets>
-    <devcontainer_cache>
-      Image at `ghcr.io/${{ github.repository }}/devcontainer`. `publish-docker.yml` builds the raw Dockerfile;
-      `prebuild-devcontainer.yml` layers Features. Login via `docker/login-action` with `GITHUB_TOKEN`.
-      Set repo variable `VERSION_PREFIX` (e.g., `1.0`) for versioned tags emitted by both image publishing workflows.
-    </devcontainer_cache>
-  </environment_setup>
+## Running Tests
 
-  <testing>
-    <guidance>Tests are shell scripts in `test/`. Run directly with `bash`.</guidance>
-    <commands>
-      <command>All tests: `bash test/test-devcontainer-build.sh && bash test/test-devcontainer-tools.sh && bash test/test-prompt-assembly.sh`</command>
-      <command>Prompt changes: `bash test/test-prompt-assembly.sh`</command>
-      <command>Dockerfile changes: `bash test/test-devcontainer-tools.sh`</command>
-    </commands>
-    <guidance>Add new fixture payloads to `test/fixtures/` when testing new event types.</guidance>
-  </testing>
+```bash
+# Run all tests (verbose)
+uv run pytest -v
 
-  <coding_conventions>
-    <rule>Keep changes minimal and targeted.</rule>
-    <rule>Do not hardcode secrets/tokens.</rule>
-    <rule>Preserve the `__EVENT_DATA__` placeholder in `orchestrator-agent-prompt.md`.</rule>
-    <rule>Keep orchestrator delegation-depth ≤2 and "never write code directly" constraint.</rule>
-    <rule>Pin action versions by SHA in workflow files.</rule>
-    <rule>Never add duplicate top-level `name:`, `on:`, or `jobs:` keys in workflow YAML.</rule>
-    <rule>`.opencode/` is checked out by `actions/checkout`; do not COPY it in the Dockerfile.</rule>
-    <rule>Dockerfile lives at `.github/.devcontainer/Dockerfile`. Consumer devcontainer uses `"image:"` — no local build.</rule>
-  </coding_conventions>
+# Run with coverage report
+uv run pytest --cov=src --cov-report=term-missing
 
-  <agent_specific_guardrails>
-    <rule>The Orchestrator agent delegates to specialists via the `task` tool — never writes code directly.</rule>
-    <rule>Prompt assembly pipeline:
-      1. Read template from `.github/workflows/prompts/orchestrator-agent-prompt.md`.
-      2. Prepend structured event context (event name, action, actor, repo, ref, SHA).
-      3. Append raw event JSON from `${{ toJson(github.event) }}`.
-      4. Write to `.assembled-orchestrator-prompt.md` and export path via `GITHUB_ENV`.
-    </rule>
-  </agent_specific_guardrails>
+# Run a single test file
+uv run pytest tests/test_work_item.py -v
 
-  <agent_readiness>
-    <verification_protocol>
-      For any non-trivial change (logic, behavior, refactors, dependency updates, config changes, multi-file edits):
-      run verification, fix all failures, re-run until clean. Do not skip or suppress errors.
-    </verification_protocol>
+# Run a specific test by name
+uv run pytest tests/test_work_item.py::test_create_work_item -v
+```
 
-    <verification_commands>
-      <!--
-        | Check                  | Command                                              | When to run              |
-        |========================|======================================================|==========================|
-        | Build + Roslyn analysis| dotnet build {SolutionName}.sln -warnaserror          | Every task               |
-        | Code style (C#)        | dotnet format {SolutionName}.sln --verify-no-changes  | Every task               |
-        | Unit tests             | dotnet test {SolutionName}.sln --no-build             | Every task               |
-        | Polyglot lint          | trunk check                                           | Every task               |
-        | Security scan          | trunk check --all --filter=trufflehog,osv-scanner,... | When explicitly required |
-        | Shell tests            | bash test/test-prompt-assembly.sh                     | Prompt/workflow changes  |
-        | Devcontainer tests     | bash test/test-devcontainer-tools.sh                  | Dockerfile changes       |
-        | Workflow structure     | grep -c "^name:" .github/workflows/*.yml (expect 1)   | Workflow changes         |
-      -->
-      <rule>When adding a CI workflow, add its equivalent local command to this table.</rule>
-    </verification_commands>
+**Test suite:** 10 tests across 2 files — all passing.
 
-    <post_commit_monitoring>
-      After push, monitor CI until green: `gh run list --limit 5`, `gh run watch <id>`, `gh run view <id> --log-failed`.
-      If any workflow fails, stop feature work, triage, fix, re-verify, push. Do not mark work complete while CI is failing.
-    </post_commit_monitoring>
+## Linting and Formatting
 
-    <pipeline_speed_policy>
-      <lane name="fast_readiness" blocking="true">Build, lint/format, unit tests — keep fast for merge readiness.</lane>
-      <lane name="extended_validation" blocking="false">Integration suites, security scans, dependency audits.</lane>
-      <rule>Protect the fast lane from slow steps.</rule>
-    </pipeline_speed_policy>
-  </agent_readiness>
+```bash
+# Lint
+uv run ruff check src/ tests/
 
-  <validation_before_handoff>
-    <step>Run applicable shell tests and verification commands.</step>
-    <step>Validate workflow YAML: `grep -c "^name:" .github/workflows/orchestrator-agent.yml  # expect 1`</step>
-    <step>Summarize: what changed, what was validated, remaining risks (secret-dependent paths, image cache misses).</step>
-  </validation_before_handoff>
+# Auto-fix lint issues
+uv run ruff check --fix src/ tests/
 
-  <tool_use_instructions>
-    <instruction id="querying_microsoft_documentation">
-      <applyTo>**</applyTo>
-      <title>Querying Microsoft Documentation</title>
-      <tools><tool>microsoft_docs_search</tool><tool>microsoft_docs_fetch</tool><tool>microsoft_code_sample_search</tool></tools>
-      <guidance>
-        Use these MCP tools for Microsoft technologies (C#, ASP.NET Core, .NET, EF, NuGet).
-        Prioritize retrieved info over training data for newer features.
-      </guidance>
-    </instruction>
-    <instruction id="sequential_thinking_default_usage">
-      <applyTo>*</applyTo>
-      <title>Sequential Thinking</title>
-      <tools><tool>sequential_thinking</tool></tools>
-      <guidance>
-        Use for all non-trivial requests. Enables step-by-step analysis with revision, branching, and dynamic adjustment.
-        Use when: breaking down complex problems, planning, architectural decisions, debugging, multi-step context.
-      </guidance>
-    </instruction>
-    <instruction id="memory_default_usage">
-      <applyTo>*</applyTo>
-      <title>Knowledge Graph Memory</title>
-      <tools><tool>create_entities</tool><tool>create_relations</tool><tool>add_observations</tool><tool>delete_entities</tool><tool>delete_observations</tool><tool>delete_relations</tool><tool>read_graph</tool><tool>search_nodes</tool><tool>open_nodes</tool></tools>
-      <guidance>
-        Use for non-trivial requests. Persist user/project context (preferences, configs, decisions, challenges, solutions).
-        Entities have names, types, and observations. Relations connect entities. Search/read at task start; update after significant work.
-      </guidance>
-    </instruction>
-  </tool_use_instructions>
+# Format check
+uv run ruff format --check src/ tests/
 
-  <available_tools>
-    <summary>
-      Tools available inside the devcontainer at runtime. Installed via
-      `.github/.devcontainer/Dockerfile` unless noted otherwise.
-    </summary>
+# Format (write)
+uv run ruff format src/ tests/
 
-    <runtimes_and_package_managers>
-      <tool name="dotnet" version="10.0.102">`.NET SDK` — build, test, publish C#/F# projects. Includes Avalonia Templates 11.3.12.</tool>
-      <tool name="node" version="24.14.0 LTS">`Node.js` — JavaScript runtime. Required for MCP server packages (`npx`).</tool>
-      <tool name="npm">`npm` — Node package manager (bundled with Node.js).</tool>
-      <tool name="bun" version="1.3.10">`Bun` — fast JavaScript/TypeScript runtime, bundler, and package manager.</tool>
-      <tool name="uv" version="0.10.9">`uv` — Astral Python package manager. Also provides `uvx` for ephemeral tool runs.</tool>
-    </runtimes_and_package_managers>
+# Type check
+uv run mypy src/
+```
 
-    <cli_tools>
-      <tool name="gh">`GitHub CLI` — interact with GitHub API (issues, PRs, repos, releases, actions). Authenticated automatically via `GITHUB_TOKEN` env var in CI; use `gh auth login --with-token` otherwise.</tool>
-      <tool name="opencode" version="1.2.24">`opencode CLI` — AI agent runtime. Runs agents defined in `.opencode/agents/` with MCP server support.</tool>
-      <tool name="git">`Git` — version control (system package + devcontainer feature).</tool>
-    </cli_tools>
+**Note:** `ruff` replaces flake8, isort, and black. Do not install separate formatters.
 
-    <github_authentication>
-      <summary>
-        GitHub API access is configured at multiple layers to support both `gh` CLI and MCP GitHub server operations.
-      </summary>
-      <layer name="GITHUB_TOKEN">Provided automatically by GitHub Actions. Passed into the devcontainer via `--remote-env`.</layer>
-      <layer name="GITHUB_PERSONAL_ACCESS_TOKEN">Bridged from `GITHUB_TOKEN` for the `@modelcontextprotocol/server-github` MCP server, which requires this specific env var name. Set in `opencode.json` via the MCP `env` block, in `devcontainer.json` `remoteEnv`, and exported in `run_opencode_prompt.sh`.</layer>
-      <layer name="gh auth login">`run_opencode_prompt.sh` authenticates the `gh` CLI via `echo "$GITHUB_TOKEN" | gh auth login --with-token` before launching opencode.</layer>
-    </github_authentication>
+## Project Structure
 
-    <scripts_directory>
-      <summary>PowerShell helper scripts in `scripts/` for GitHub setup and management tasks.</summary>
-      <script name="scripts/common-auth.ps1">Shared `Initialize-GitHubAuth` function — checks `gh auth status`, authenticates via PAT token (`$env:GITHUB_AUTH_TOKEN`) or interactive login.</script>
-      <script name="scripts/gh-auth.ps1">Extended GitHub auth helper — supports PAT token auth via `--with-token` and interactive fallback.</script>
-      <script name="scripts/import-labels.ps1">Imports labels from `.github/.labels.json` into the repository.</script>
-      <script name="scripts/create-milestones.ps1">Creates project milestones from plan docs.</script>
-      <script name="scripts/test-github-permissions.ps1">Verifies `GITHUB_TOKEN` has required permissions (contents, issues, PRs, packages).</script>
-      <script name="scripts/query.ps1">PR review thread manager — fetches unresolved review threads from a PR, summarizes them, and can batch-reply and resolve them. Supports `--AutoResolve`, `--DryRun`, `--Interactive`, `--ReplyEach`, `--Path`, `--BodyContains` filtering. Use this instead of writing ad-hoc scripts to resolve PR review comments.</script>
-      <script name="scripts/update-remote-indices.ps1">Updates remote instruction module indices.</script>
-    </scripts_directory>
-  </available_tools>
-</instructions>
+```
+workflow-orchestration-queue-echo19/
+├── pyproject.toml                # Project config, dependencies, tool settings (ruff, pytest, mypy)
+├── .python-version               # Python 3.12 version pin
+├── uv.lock                       # Deterministic lockfile (generated by uv)
+├── Dockerfile                    # Python 3.12-slim + uv, editable install
+├── docker-compose.yml            # Notifier (port 8000) + Sentinel (port 8001, profile-gated)
+│
+├── src/                          # Application source code
+│   ├── __init__.py
+│   ├── notifier_service.py       # FastAPI app: GitHub webhook ingestion, HMAC verification, event triage
+│   ├── orchestrator_sentinel.py  # Async polling service: task claiming, worker lifecycle, shell bridge
+│   ├── models/                   # Pydantic v2 data models
+│   │   ├── __init__.py
+│   │   ├── work_item.py          # WorkItem, TaskType enum, WorkItemStatus enum
+│   │   └── github_events.py      # GitHub webhook payload schemas (IssuesEvent, GitHubIssue, etc.)
+│   └── interfaces/               # Abstract base classes
+│       ├── __init__.py
+│       └── i_task_queue.py       # ITaskQueue ABC — provider-agnostic queue operations
+│
+├── tests/                        # Python test suite (pytest)
+│   ├── __init__.py
+│   ├── conftest.py               # Shared fixtures
+│   ├── test_work_item.py         # WorkItem model tests
+│   └── test_github_events.py     # GitHub event model tests
+│
+├── scripts/                      # Shell/PowerShell utility scripts (auth, labels, milestones)
+├── docs/                         # Architecture and user documentation
+├── plan_docs/                    # Reference design documents (seeded at clone time, not linted)
+├── .github/                      # GitHub Actions workflows, devcontainer configs
+├── .opencode/                    # Agent definitions and command prompts
+├── local_ai_instruction_modules/ # Markdown-based instruction modules for AI agents
+└── test/                         # Shell-based tests (devcontainer build, tools, prompt assembly)
+```
+
+## Code Style
+
+- **Python 3.12+** with full type hints on all public APIs
+- **Pydantic v2** for data validation and serialization (`model_config = ConfigDict(...)`)
+- **Google-style docstrings** for all public functions and classes
+- **Ruff** for linting and formatting (replaces flake8, isort, black)
+- **Line length:** 120 characters
+- **Strict mypy** enabled (`[tool.mypy] strict = true`)
+- **asyncio-first:** use `async def` for all I/O-bound operations
+- **Enum classes** for fixed vocabularies (TaskType, WorkItemStatus)
+
+## Architecture Notes
+
+**Four Pillars:**
+1. **The Ear** (`notifier_service.py`) — FastAPI webhook receiver; ingests GitHub events, verifies HMAC signatures, triages event types
+2. **The State** (GitHub Issues) — Markdown as a Database; GitHub Issues serve as the task queue providing transparency, auditability, and human oversight
+3. **The Brain** (`orchestrator_sentinel.py`) — Background polling orchestrator; claims tasks, manages worker lifecycle, dispatches via shell bridge
+4. **The Hands** (Worker containers) — Shell-bridge execution ensures reproducible environments
+
+**Key Design Decisions:**
+- **Polling-first resiliency:** Sentinel uses polling as primary discovery; webhooks are an optimization. Self-heals after downtime.
+- **Provider-agnostic queue interface:** `ITaskQueue` abstract base class enables future support for Linear, Notion, or custom backends.
+- **Shell-bridge execution:** Orchestrator interacts with worker containers exclusively via shell scripts.
+- **uv for package management:** Rust-based, deterministic lockfiles, fast container builds.
+
+## PR and Commit Guidelines
+
+- **Commit message format:** `type: description`
+- **Types:** `feat`, `fix`, `docs`, `chore`, `test`, `refactor`
+- **All PRs require passing CI checks** (lint + tests)
+- **Squash merge preferred** to keep history clean
+- **PR title** should follow same `type: description` convention
+
+## Common Pitfalls
+
+- **Do NOT create .NET project files** — this is a Python project, despite the devcontainer having .NET SDK installed
+- **Docker healthchecks must use Python stdlib** (e.g., `urllib.request`), not `curl` — the slim image does not include it
+- **COPY src/ before install in Dockerfile** — editable installs (`-e .`) require source files to be present
+- **All GitHub Actions must pin to specific commit SHAs**, not tags
+- **Do not modify `uv.lock` manually** — always use `uv lock` or `uv sync` to update
+- **Do not hardcode secrets/tokens** — use environment variables and GitHub Secrets
+- **`plan_docs/` is seeded externally** — exclude from strict linting; do not reformat
+
+## Orchestration System
+
+This repository is powered by a GitHub Actions-based AI orchestration system.
+
+### How It Works
+
+On GitHub events (issues, PR comments, reviews), the `orchestrator-agent` workflow assembles a
+structured prompt, spins up a devcontainer, and runs `opencode --agent Orchestrator` to delegate
+work to specialist sub-agents in `.opencode/agents/`.
+
+### Template Repository
+
+This is a **GitHub template repo** (`intel-agency/workflow-orchestration-queue-echo19`).
+New project repositories are created from it using automation scripts in the
+`nam20485/workflow-launch2` repo. The scripts clone this template, seed plan docs,
+replace template placeholders, and push — producing a ready-to-go AI-orchestrated repo.
+
+Once the template has been cloned into a new instance, this file must be updated to match
+the new repo's specifics (e.g., name, links, instructions).
+
+### Orchestration Tech Stack
+
+- **opencode CLI** — agent runtime (`opencode --model zai-coding-plan/glm-5 --agent Orchestrator`)
+- **ZhipuAI GLM models** via `ZHIPU_API_KEY`
+- **GitHub Actions + devcontainers/ci** — workflow trigger, runner, reproducible container
+- **MCP servers:** `@modelcontextprotocol/server-sequential-thinking`, `@modelcontextprotocol/server-memory`
+
+### Key Repository Paths
+
+| Path | Description |
+|------|-------------|
+| `.github/workflows/orchestrator-agent.yml` | Primary workflow — assembles prompt, logs into GHCR, runs opencode in devcontainer |
+| `.github/workflows/prompts/orchestrator-agent-prompt.md` | Prompt template with `__EVENT_DATA__` placeholder (sed-substituted at runtime) |
+| `.github/workflows/publish-docker.yml` | Builds Dockerfile, pushes to GHCR with versioned tags |
+| `.github/workflows/prebuild-devcontainer.yml` | Layers devcontainer Features on published Docker image (triggered by workflow_run) |
+| `.opencode/agents/orchestrator.md` | Orchestrator — coordinates specialists, never writes code directly |
+| `.opencode/agents/` | All specialist agents (developer, code-reviewer, planner, devops-engineer, etc.) |
+| `.opencode/commands/` | Reusable command prompts (orchestrate-new-project, grind-pr-reviews, etc.) |
+| `.opencode/opencode.json` | opencode config — MCP server definitions |
+| `.github/.devcontainer/Dockerfile` | Devcontainer image — .NET SDK, Bun, uv, opencode CLI |
+| `.github/.devcontainer/devcontainer.json` | Build-time devcontainer config (Dockerfile + Features) |
+| `.devcontainer/devcontainer.json` | Consumer devcontainer — pulls prebuilt GHCR image, auto-starts `opencode serve` |
+| `scripts/start-opencode-server.sh` | Guarded `opencode serve` bootstrapper |
+| `scripts/run-devcontainer-orchestrator.sh` | One-shot script: devcontainer up + opencode server + orchestrator agent |
+| `test/` | Shell-based tests: devcontainer build, tool availability, prompt assembly |
+| `test/fixtures/` | Sample webhook payloads for local testing |
+| `local_ai_instruction_modules/` | Local instruction modules (development rules, workflows, delegation, terminal commands) |
+
+### Opencode Server
+
+The consumer devcontainer auto-starts `opencode serve` through `scripts/start-opencode-server.sh`.
+The server listens on port `4096` by default so host or in-container clients can attach with
+`opencode run --attach http://127.0.0.1:4096 ...`.
+
+### Instruction Source
+
+Remote instructions from `nam20485/agent-instructions` (main branch) are the single source of truth.
+Fetch from raw URLs: replace `github.com/` with `raw.githubusercontent.com/` and remove `blob/`.
+
+Core instructions: `https://raw.githubusercontent.com/nam20485/agent-instructions/main/ai_instruction_modules/ai-core-instructions.md`
+
+**Required modules:**
+- Core Instructions (remote)
+- Local AI Instructions (`local_ai_instruction_modules/`)
+- Dynamic Workflow Orchestration (`local_ai_instruction_modules/ai-dynamic-workflows.md`)
+- Workflow Assignments (`local_ai_instruction_modules/ai-workflow-assignments.md`)
+- Development Instructions (`local_ai_instruction_modules/ai-development-instructions.md`)
+- Terminal Commands (optional: `local_ai_instruction_modules/ai-terminal-commands.md`)
+
+### Environment Setup
+
+**Secrets (repo Settings → Secrets):**
+- `ZHIPU_API_KEY` — ZhipuAI model access
+- `KIMI_CODE_ORCHESTRATOR_AGENT_API_KEY` — Kimi (Moonshot) model access
+- `GITHUB_TOKEN` — provided automatically by Actions
+
+**Devcontainer Cache:**
+Image at `ghcr.io/${{ github.repository }}/devcontainer`. `publish-docker.yml` builds the raw Dockerfile;
+`prebuild-devcontainer.yml` layers Features. Login via `docker/login-action` with `GITHUB_TOKEN`.
+Set repo variable `VERSION_PREFIX` (e.g., `1.0`) for versioned tags.
+
+### Shell Tests (Orchestration)
+
+```bash
+# All orchestration tests
+bash test/test-devcontainer-build.sh && bash test/test-devcontainer-tools.sh && bash test/test-prompt-assembly.sh
+
+# Prompt/workflow changes only
+bash test/test-prompt-assembly.sh
+
+# Dockerfile changes only
+bash test/test-devcontainer-tools.sh
+```
+
+Add new fixture payloads to `test/fixtures/` when testing new event types.
+
+### Orchestration Coding Conventions
+
+- Keep changes minimal and targeted
+- Preserve the `__EVENT_DATA__` placeholder in `orchestrator-agent-prompt.md`
+- Keep orchestrator delegation-depth ≤2 and "never write code directly" constraint
+- Pin action versions by SHA in workflow files
+- Never add duplicate top-level `name:`, `on:`, or `jobs:` keys in workflow YAML
+- `.opencode/` is checked out by `actions/checkout`; do not COPY it in the Dockerfile
+- Dockerfile lives at `.github/.devcontainer/Dockerfile`. Consumer devcontainer uses `"image:"` — no local build
+
+### Agent Guardrails
+
+- The Orchestrator agent delegates to specialists via the `task` tool — never writes code directly
+- Prompt assembly pipeline:
+  1. Read template from `.github/workflows/prompts/orchestrator-agent-prompt.md`
+  2. Prepend structured event context (event name, action, actor, repo, ref, SHA)
+  3. Append raw event JSON from `${{ toJson(github.event) }}`
+  4. Write to `.assembled-orchestrator-prompt.md` and export path via `GITHUB_ENV`
+
+### Verification Protocol
+
+For any non-trivial change, run verification, fix all failures, re-run until clean:
+
+| Check | Command | When |
+|-------|---------|------|
+| Python tests | `uv run pytest -v` | Every task |
+| Lint | `uv run ruff check src/ tests/` | Every task |
+| Format | `uv run ruff format --check src/ tests/` | Every task |
+| Type check | `uv run mypy src/` | Every task |
+| Shell tests | `bash test/test-prompt-assembly.sh` | Prompt/workflow changes |
+| Devcontainer tests | `bash test/test-devcontainer-tools.sh` | Dockerfile changes |
+| Workflow structure | `grep -c "^name:" .github/workflows/*.yml` (expect 1 each) | Workflow changes |
+
+### Post-Commit Monitoring
+
+After push, monitor CI until green:
+```bash
+gh run list --limit 5
+gh run watch <id>
+gh run view <id> --log-failed
+```
+
+If any workflow fails, stop feature work, triage, fix, re-verify, push. Do not mark work complete while CI is failing.
+
+### Validation Before Handoff
+
+1. Run applicable shell tests and verification commands
+2. Validate workflow YAML: `grep -c "^name:" .github/workflows/orchestrator-agent.yml  # expect 1`
+3. Summarize: what changed, what was validated, remaining risks (secret-dependent paths, image cache misses)
+
+### Available Tools in Devcontainer
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| `uv` | 0.10.9 | Python package manager (`uv sync`, `uv run`, `uv pip install`) |
+| `dotnet` | 10.0.102 | .NET SDK (available but not used by OS-APOW) |
+| `node` | 24.14.0 LTS | JavaScript runtime (for MCP servers) |
+| `bun` | 1.3.10 | Fast JS/TS runtime and bundler |
+| `gh` | — | GitHub CLI (authenticated via `GITHUB_TOKEN`) |
+| `opencode` | 1.2.24 | AI agent runtime |
+| `git` | — | Version control |
+
+**GitHub Authentication:**
+- `GITHUB_TOKEN` — provided by Actions, passed into devcontainer via `--remote-env`
+- `GITHUB_PERSONAL_ACCESS_TOKEN` — bridged from `GITHUB_TOKEN` for MCP GitHub server
+- `gh auth login` — `run_opencode_prompt.sh` authenticates via `echo "$GITHUB_TOKEN" | gh auth login --with-token`
